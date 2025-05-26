@@ -77,3 +77,47 @@ log.Info("Logger is ready")
 
 ---
 
+### ⚙️ Server 啟動與管理工具
+
+提供統一介面與工具，方便同時啟動多個 server（如 gRPC、HTTP），並支援優雅關閉。
+
+---
+
+#### 🏗️ 基本概念
+
+這個模組包含三部分：
+- **Server 介面**  
+  定義 `Start()` 和 `Stop(ctx)` 方法。
+- **Runner**  
+  負責管理多個 server，統一啟動、監聽系統訊號、優雅關閉。
+- **內建封裝**  
+  - gRPC server → 使用 `NewGRPCServer(port int, grpcServer *grpc.Server)`
+  - HTTP server → 使用 `NewHTTPServer(addr string, handler http.Handler)`
+
+---
+
+#### 🚀 使用範例
+
+```go
+import (
+    "github.com/Wuli-Giao-Giao/tools/server"
+    "google.golang.org/grpc"
+    "net/http"
+)
+
+func main() {
+    // 建立 gRPC server
+    grpcSrv := grpc.NewServer()
+    grpcServer := server.NewGRPCServer(50051, grpcSrv)
+
+    // 建立 HTTP server
+    httpHandler := http.NewServeMux()
+    httpHandler.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+        w.Write([]byte("pong"))
+    })
+    httpServer := server.NewHTTPServer(":8080", httpHandler)
+
+    // 使用 Runner 管理多個 server
+    runner := server.NewRunner(grpcServer, httpServer)
+    runner.Run()
+}
