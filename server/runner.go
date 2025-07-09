@@ -11,25 +11,23 @@ import (
 )
 
 type Runner struct {
-	servers []Server
+	server Server
 }
 
-func NewRunner(servers ...Server) *Runner {
-	return &Runner{servers: servers}
+func NewRunner(server Server) *Runner {
+	return &Runner{server: server}
 }
 
 func (r *Runner) Run() {
 	var wg sync.WaitGroup
 
-	for _, s := range r.servers {
-		wg.Add(1)
-		go func(s Server) {
-			defer wg.Done()
-			if err := s.Start(); err != nil {
-				log.Printf("server exited with error: %v", err)
-			}
-		}(s)
-	}
+	wg.Add(1)
+	go func(s Server) {
+		defer wg.Done()
+		if err := s.Start(); err != nil {
+			log.Printf("server exited with error: %v", err)
+		}
+	}(r.server)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -39,10 +37,8 @@ func (r *Runner) Run() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	for _, s := range r.servers {
-		if err := s.Stop(ctx); err != nil {
-			log.Printf("error stopping server: %v", err)
-		}
+	if err := r.server.Stop(ctx); err != nil {
+		log.Printf("error stopping server: %v", err)
 	}
 
 	wg.Wait()

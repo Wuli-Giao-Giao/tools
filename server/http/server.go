@@ -26,7 +26,7 @@ func (h *HTTPServer) Start() error {
 }
 
 func (h *HTTPServer) Stop(ctx context.Context) error {
-	shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	return h.srv.Shutdown(shutdownCtx)
 }

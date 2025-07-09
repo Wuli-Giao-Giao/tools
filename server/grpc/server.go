@@ -4,42 +4,45 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/Wuli-Giao-Giao/tools/server"
 	grpc "google.golang.org/grpc"
 )
 
 type GRPCServer struct {
-	grpcServer *grpc.Server
-	port       int
+	srv  *grpc.Server
+	addr string
 }
 
-func NewGRPCServer(port int, grpcServer *grpc.Server) server.Server {
+func NewGRPCServer(addr string, grpcServer *grpc.Server) server.Server {
 	return &GRPCServer{
-		grpcServer: grpcServer,
-		port:       port,
+		srv:  grpcServer,
+		addr: addr,
 	}
 }
 
-func (s *GRPCServer) Start() error {
-	addr := fmt.Sprintf(":%d", s.port)
-	listener, err := net.Listen("tcp", addr)
+func (g *GRPCServer) Start() error {
+	listener, err := net.Listen("tcp", g.addr)
 	if err != nil {
-		return fmt.Errorf("failed to listen on %s: %w", addr, err)
+		return fmt.Errorf("failed to listen on %s: %w", g.addr, err)
 	}
-	return s.grpcServer.Serve(listener)
+	return g.srv.Serve(listener)
 }
 
-func (s *GRPCServer) Stop(ctx context.Context) error {
+func (g *GRPCServer) Stop(ctx context.Context) error {
+	shutdownCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
 	done := make(chan struct{})
 	go func() {
-		s.grpcServer.GracefulStop()
+		g.srv.GracefulStop()
 		close(done)
 	}()
 
 	select {
-	case <-ctx.Done():
-		s.grpcServer.Stop()
+	case <-shutdownCtx.Done():
+		g.srv.Stop()
 		return ctx.Err()
 	case <-done:
 		return nil
